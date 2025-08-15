@@ -1,19 +1,31 @@
-"""Planner module stub."""
+"""Deterministic planner returning a small example plan."""
 
-import dspy
-
-
-class PlanSig(dspy.Signature):
-    """Plan code changes and checks as a DAG."""
-    goal: str
-    repo_view: dict
-    returns: str
+import json
+from typing import Dict
 
 
-class Planner(dspy.Module):
-    def __init__(self):
-        super().__init__()
-        self.pred = dspy.ChainOfThought(PlanSig)
+class Planner:
+    """Return a static plan demonstrating the orchestrator flow."""
 
-    def forward(self, goal: str, repo_view: dict) -> str:
-        return self.pred(goal=goal, repo_view=repo_view).returns
+    def forward(self, goal: str, repo_view: Dict) -> str:  # noqa: D401
+        plan = {
+            "steps": [
+                {
+                    "id": "readme",
+                    "kind": "read",
+                    "deps": [],
+                    "parallelizable": True,
+                    "tool": "fs.read",
+                    "args": {"path": "README.md"},
+                },
+                {
+                    "id": "echo",
+                    "kind": "run",
+                    "deps": ["readme"],
+                    "parallelizable": False,
+                    "tool": "run",
+                    "args": {"command": "echo done"},
+                },
+            ]
+        }
+        return json.dumps(plan)
