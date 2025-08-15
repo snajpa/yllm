@@ -727,3 +727,29 @@ if __name__ == "__main__":
 21) License & attribution
 
 This repository is intended to be open source (fill in your preferred license). The design relies on DSPy for program-level compilation and on the Model Context Protocol (MCP) for tool standardization, with native adapters where needed.
+
+22) Current implementation status & development roadmap
+
+Current state (as of 2025-08-15):
+
+- Repository skeleton checked in with AGENTS.md, base configs, Makefile, and sample repo.
+- CLI: Typer entrypoint exposes a simple `plan` command; individual subcommands in `cli/commands/` are stubs.
+- Orchestrator: static `Planner` outputs a fixed two-step plan; `Scheduler` can batch parallel steps; `Router` and `Critic` are placeholders.
+- Tools: dispatch table wired to async adapters for filesystem reads/writes, shell `run`, and `test` execution. Remaining adapters (git, search, browser, docker, etc.) are placeholders.
+- Context engine: indexer, repo graph, embeddings, and retriever modules return empty structures.
+- Runner & policy: sandbox and OPA gate modules exist but are not used by adapters.
+- Models: provider stubs and routing config exist; no live LLM integrations.
+- Observability, evals, and persistence directories contain only scaffolding code.
+
+Roadmap to full functionality:
+
+1. **Planner & Router** – Implement DSPy-based planner producing real DAGs and a router that selects tools and enforces policy.
+2. **Context engine** – Build RepoGraph indexer with tree-sitter/LSP, embed code, and serve context packs.
+3. **Tooling** – Flesh out MCP client; implement adapters for git, search, browser, docker, etc., and load them from config.
+4. **Execution & safety** – Wire sandbox and OPA checks into tool invocation and enforce budgets from `limits.yaml`.
+5. **Model layer** – Implement model router and provider clients (OpenAI, Anthropic, local models) with parallel tool call support.
+6. **CLI/TUI** – Fill out remaining subcommands (`ctx`, `edit`, `diff`, `apply`, `run`, `test`, `commit`, `pr`) with rich output and artifact logging.
+7. **Observability & evals** – Integrate OpenTelemetry tracing, metrics, and evaluation scripts (e.g., SWE-bench).
+8. **Testing** – Expand unit coverage for orchestrator components and adapters; add end-to-end tests using `examples/hello_world_repo`.
+
+Update this roadmap as components land and new requirements emerge.
