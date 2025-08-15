@@ -1,0 +1,8 @@
+{
+  "servers": [
+    {"name": "fs", "endpoint": "http://localhost:7331"},
+    {"name": "git", "endpoint": "http://localhost:7332"},
+    {"name": "fetch", "endpoint": "http://localhost:7333"}
+  ],
+  "timeout_ms": 15000
+}

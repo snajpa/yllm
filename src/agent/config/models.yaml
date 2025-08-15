@@ -1,0 +1,23 @@
+default:
+  reasoning:
+    provider: anthropic
+  coding:
+    provider: open_weights
+providers:
+  openai:
+    model: gpt-4.1-mini
+    parallel_tool_calls: true
+    api_key_env: OPENAI_API_KEY
+  anthropic:
+    model: claude-3.7-sonnet
+    parallel_tool_calls: true
+    api_key_env: ANTHROPIC_API_KEY
+  open_weights:
+    endpoint: http://localhost:8000/v1
+    model: qwen2.5-coder-32b-instruct
+    parallel_tool_calls: false
+routing_rules:
+  - when: step.kind in ["edit","patch","generate_tests"]
+    use: coding
+  - when: step.kind in ["plan","explain","reason"]
+    use: reasoning

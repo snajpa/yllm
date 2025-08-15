@@ -727,4 +727,3 @@ if __name__ == "__main__":
 21) License & attribution
 
 This repository is intended to be open source (fill in your preferred license). The design relies on DSPy for program-level compilation and on the Model Context Protocol (MCP) for tool standardization, with native adapters where needed.
-

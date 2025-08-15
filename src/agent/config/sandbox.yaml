@@ -1,0 +1,9 @@
+engine: gvisor
+network: disabled
+cpu_limit: "2"
+memory_limit_mb: 4096
+workdir: /workspace
+mounts_readonly:
+  - /usr/lib/python3.11
+env_passthrough: []
+seccomp_profile: src/agent/runner/seccomp/default.json
