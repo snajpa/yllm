@@ -1,0 +1,6 @@
+budgets:
+  turn_seconds: 120
+  turn_tokens: 200000
+  max_parallel_tools: 6
+  max_plan_steps: 50
+  max_tool_runtime_seconds: 90

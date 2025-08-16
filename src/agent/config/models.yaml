@@ -1,0 +1,15 @@
+default:
+  reasoning:
+    provider: llama_cpp
+  coding:
+    provider: llama_cpp
+providers:
+  llama_cpp:
+    endpoint: http://localhost:8080
+    model: gguf-model.bin
+    parallel_tool_calls: false
+routing_rules:
+  - when: step.kind in ["edit","patch","generate_tests"]
+    use: coding
+  - when: step.kind in ["plan","explain","reason"]
+    use: reasoning

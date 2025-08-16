@@ -1,0 +1,14 @@
+mcp:
+  - name: fs
+    endpoint: http://localhost:7331
+  - name: git
+    endpoint: http://localhost:7332
+  - name: fetch
+    endpoint: http://localhost:7333
+native:
+  - name: run
+    module: agent.tools.adapters.run:call
+  - name: test
+    module: agent.tools.adapters.test:call
+  - name: search
+    module: agent.tools.adapters.search:call

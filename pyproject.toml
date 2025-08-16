@@ -1,0 +1,28 @@
+[project]
+name = "agent"
+version = "0.1.0"
+authors = [{name = "Open Source"}]
+description = "DSPy-powered code assistant"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "dspy-ai",
+    "pydantic",
+    "typer",
+    "rich",
+    "networkx",
+    "tree-sitter",
+    "opentelemetry-sdk",
+    "faiss-cpu",
+    "llama-cpp-python",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pre-commit",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

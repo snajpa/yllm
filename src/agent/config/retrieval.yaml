@@ -1,0 +1,11 @@
+embeddings:
+  backend: sentence-transformers
+  model: all-MiniLM-L6-v2
+index:
+  backend: faiss
+  dim: 384
+retriever:
+  top_k_symbols: 24
+  top_k_files: 12
+  max_tokens_context_pack: 12000
+  refresh_on_diff: true
