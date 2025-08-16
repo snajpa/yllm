@@ -2,17 +2,10 @@
 
 import typer
 
-from agent.orchestrator.runtime import run_sync
+from .commands import plan as plan_cmd
 
 app = typer.Typer(add_completion=False)
-
-
-@app.command()
-def plan(goal: str):
-    """Plan and execute a simple workflow for *goal*."""
-
-    results = run_sync(goal, {})
-    typer.echo(results)
+app.command()(plan_cmd.main)
 
 
 if __name__ == "__main__":
