@@ -7,17 +7,15 @@ CLI/TUI  ──► Agent Orchestrator (DSPy Program)
            ├─ Critics (tests/lints/spec) with BestOfN/Refine
            ├─ State: conversation, scratchpad, working tree diffs
            ├─ Context Engine (RepoGraph: AST/LSP/embeddings)
-           ├─ Model Router (code vs. general reasoning)
+           ├─ Model Router (single llama.cpp provider)
            ├─ Execution/Safety (sandbox + OPA policy + budgets)
            └─ Observability/Evals (tracing, SWE-bench hooks)
                 └─ Persistence: vector index + run artifacts
 
 
-Parallel tool calling is supported two ways:
-
-Model-native parallel tool calls (single turn emits multiple tool invocations).
-
-Runtime-enforced parallelism via the Planner → DAG → Parallel Scheduler, even if the model can only call one tool at a time.
+Parallel tool calling is handled by the Planner → DAG → Parallel
+Scheduler. The llama.cpp provider does not support model-native
+parallel tool calls, so all concurrency is orchestrated by the runtime.
 
 1) Repository layout (everything here should exist)
 
@@ -39,6 +37,8 @@ Paths under src/agent/** are importable Python modules. Create empty __init__.py
 ├─ examples/
 │  └─ hello_world_repo/           # tiny sample repo for demos
 ├─ tests/
+│  ├─ dummy_llama_server.py     # dummy llama.cpp API for tests
+│  ├─ test_llama_provider.py    # ensures provider round‑trip
 │  ├─ test_planner.py
 │  ├─ test_scheduler.py
 │  ├─ test_router.py
@@ -95,10 +95,7 @@ Paths under src/agent/** are importable Python modules. Create empty __init__.py
       │  ├─ router.py             # pick model per step
       │  ├─ interfaces.py         # LLM client interface
       │  └─ providers/
-      │     ├─ openai.py          # optional
-      │     ├─ anthropic.py       # optional
-      │     ├─ vllm_open_weights.py# local/open models via vLLM
-      │     └─ llama_cpp.py       # local/gguf (optional)
+      │     └─ llama_cpp.py       # local llama.cpp client
       ├─ runner/
       │  ├─ __init__.py
       │  ├─ sandbox.py            # gVisor/Firejail/Docker wrapper
@@ -141,7 +138,7 @@ Python: 3.10+
 
 System: Linux/macOS (Windows WSL recommended)
 
-Recommended: uv or pipx, pre-commit, Docker (optional), gVisor or Firejail (for sandboxing)
+Recommended: uv or pipx, pre-commit, Docker (optional), gVisor or Firejail (for sandboxing), and ``llama-cpp-python`` for running local models
 
 # Create venv and install
 uv venv && source .venv/bin/activate    # or python -m venv .venv
@@ -156,12 +153,15 @@ cp .env.example .env && $EDITOR .env
 # Create required directories and placeholder files
 bash scripts/bootstrap_repo.sh
 
+# Launch a local llama.cpp server (separate terminal)
+python -m llama_cpp.server --model /path/to/model.gguf --port 8080
 
-pyproject.toml should include (sketch): dspy-ai, pydantic, typer, rich, networkx, tree_sitter, opentelemetry-sdk, faiss-cpu (or chromadb), uvloop (posix), and provider SDKs you use.
+
+pyproject.toml should include (sketch): dspy-ai, pydantic, typer, rich, networkx, tree_sitter, opentelemetry-sdk, faiss-cpu (or chromadb), uvloop (posix), and llama-cpp-python.
 
 3) Configuration files (required)
 
-src/agent/config/models.yaml – model routing & providers.
+src/agent/config/models.yaml – model routing & llama.cpp instances.
 
 src/agent/config/tools.yaml – list MCP servers and native adapters.
 
@@ -178,20 +178,12 @@ src/agent/config/mcp/clients.json – MCP endpoints & tool manifests.
 Sample models.yaml:
 
 default:
-  reasoning: provider: anthropic  # or openai/local
-  coding: provider: open_weights  # e.g., vllm qwen2.5-coder
+  reasoning: provider: llama_cpp
+  coding: provider: llama_cpp
 providers:
-  openai:
-    model: gpt-4.1-mini
-    parallel_tool_calls: true
-    api_key_env: OPENAI_API_KEY
-  anthropic:
-    model: claude-3.7-sonnet
-    parallel_tool_calls: true
-    api_key_env: ANTHROPIC_API_KEY
-  open_weights:
-    endpoint: http://localhost:8000/v1
-    model: qwen2.5-coder-32b-instruct
+  llama_cpp:
+    endpoint: http://localhost:8080
+    model: gguf-model.bin
     parallel_tool_calls: false
 routing_rules:
   - when: step.kind in ["edit","patch","generate_tests"]
@@ -258,8 +250,7 @@ retriever:
 
 Sample .env (excerpt):
 
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
+LLAMA_CPP_BASE_URL=http://localhost:8080
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 
 4) Core contracts (types & signatures)
@@ -397,11 +388,12 @@ data/ folders are created under runtime (see §13).
 
 9) Model Router
 
-Chooses provider/model per step (models/router.py) using models.yaml rules.
+Chooses which llama.cpp instance to use for a step (models/router.py)
+based on ``models.yaml``. At startup the CLI will instruct the user to
+launch the required llama.cpp servers and expose their base URLs.
 
-Surface a uniform tool-call transport shape for all providers.
-
-Respect parallel_tool_calls when provider supports it; otherwise, fallback to runtime parallelism.
+Because llama.cpp does not natively support parallel tool calls, all
+parallelism is handled by the runtime scheduler.
 
 10) Execution & Safety
 
@@ -626,27 +618,17 @@ def allow_or_raise(call):
         msg = decision.get("deny_reason", "blocked by policy")
         raise PermissionError(msg)
 
-15) Parallel tool calling (dual-path)
+15) Parallel tool calling
 
-Model-native (provider supports it):
+Because llama.cpp lacks native parallel tool call support, all
+parallelism is runtime-enforced:
 
-The assistant step returns a list of ToolCalls in one turn.
+- Planner marks steps parallelizable.
+- Router produces calls per step.
+- Scheduler fans them out with ``asyncio.gather`` (or Ray).
 
-Runtime executes all calls concurrently, then returns a single message containing a list of ToolResults back to the model.
-
-Preserves the “one-turn, many tools” rhythm (lower latency).
-
-Runtime-enforced (provider doesn’t support parallel calls):
-
-Planner marks steps parallelizable.
-
-Router produces calls per step.
-
-Scheduler fans them out with asyncio.gather (or Ray).
-
-The model still sees a single “batch result” per planning chunk.
-
-Both paths share the same ToolCall/ToolResult shapes, so the rest of the system doesn’t care which path executed them.
+The model still receives a single “batch result” per planning chunk, and
+ToolCall/ToolResult shapes remain consistent.
 
 16) MCP configuration
 
@@ -666,11 +648,15 @@ src/agent/tools/mcp_client.py abstracts request/response to those servers.
 
 17) Testing & quality gates
 
-Unit tests for planner/router/scheduler.
+Run the full test suite and linters before committing.
 
-Golden tests for context packs.
+```
+pre-commit run --files $(git ls-files)
+pytest -q
+```
 
-E2E tests using the examples/hello_world_repo (no real keys).
+The tests spin up a dummy llama.cpp backend
+(`tests/dummy_llama_server.py`), so no real model download is needed.
 
 Reward functions (lints/tests/spec) drive Critic refinement loops.
 
@@ -747,7 +733,7 @@ Roadmap to full functionality:
 2. **Context engine** – Build RepoGraph indexer with tree-sitter/LSP, embed code, and serve context packs.
 3. **Tooling** – Flesh out MCP client; implement adapters for git, search, browser, docker, etc., and load them from config.
 4. **Execution & safety** – Wire sandbox and OPA checks into tool invocation and enforce budgets from `limits.yaml`.
-5. **Model layer** – Implement model router and provider clients (OpenAI, Anthropic, local models) with parallel tool call support.
+5. **Model layer** – Implement model router and the llama.cpp client with instance management and parallel tool call support.
 6. **CLI/TUI** – Fill out remaining subcommands (`ctx`, `edit`, `diff`, `apply`, `run`, `test`, `commit`, `pr`) with rich output and artifact logging.
 7. **Observability & evals** – Integrate OpenTelemetry tracing, metrics, and evaluation scripts (e.g., SWE-bench).
 8. **Testing** – Expand unit coverage for orchestrator components and adapters; add end-to-end tests using `examples/hello_world_repo`.

@@ -1,20 +1,12 @@
 default:
   reasoning:
-    provider: anthropic
+    provider: llama_cpp
   coding:
-    provider: open_weights
+    provider: llama_cpp
 providers:
-  openai:
-    model: gpt-4.1-mini
-    parallel_tool_calls: true
-    api_key_env: OPENAI_API_KEY
-  anthropic:
-    model: claude-3.7-sonnet
-    parallel_tool_calls: true
-    api_key_env: ANTHROPIC_API_KEY
-  open_weights:
-    endpoint: http://localhost:8000/v1
-    model: qwen2.5-coder-32b-instruct
+  llama_cpp:
+    endpoint: http://localhost:8080
+    model: gguf-model.bin
     parallel_tool_calls: false
 routing_rules:
   - when: step.kind in ["edit","patch","generate_tests"]
