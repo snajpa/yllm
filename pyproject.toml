@@ -23,6 +23,9 @@ dev = [
     "pre-commit",
 ]
 
+[project.scripts]
+agent = "agent.cli.__main__:app"
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"

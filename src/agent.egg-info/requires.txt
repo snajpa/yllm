@@ -1,0 +1,13 @@
+dspy-ai
+pydantic
+typer
+rich
+networkx
+tree-sitter
+opentelemetry-sdk
+faiss-cpu
+llama-cpp-python
+
+[dev]
+pytest
+pre-commit

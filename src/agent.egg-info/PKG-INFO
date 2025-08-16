@@ -1,3 +1,25 @@
+Metadata-Version: 2.4
+Name: agent
+Version: 0.1.0
+Summary: DSPy-powered code assistant
+Author: Open Source
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: dspy-ai
+Requires-Dist: pydantic
+Requires-Dist: typer
+Requires-Dist: rich
+Requires-Dist: networkx
+Requires-Dist: tree-sitter
+Requires-Dist: opentelemetry-sdk
+Requires-Dist: faiss-cpu
+Requires-Dist: llama-cpp-python
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pre-commit; extra == "dev"
+Dynamic: license-file
+
 # yllm
 
 Open, DSPy-powered code assistant — Codex‑CLI/Claude‑Code–style developer agent with parallel tool calling, MCP‑first tooling, repo‑aware Code‑RAG, sandboxed execution, and policy enforcement.
@@ -43,19 +65,6 @@ agent plan "Demo goal"
 ```
 
 You should see two tool results (read README.md, then echo "done").
-
-### Llama demo
-
-Point to your llama.cpp server and send a prompt:
-
-```
-# One-off call (no need to export):
-python -m agent.cli llama --base-url http://172.16.107.9:8081 "Say hello in one short sentence."
-
-# Alternatively, set the env and use the console script:
-export LLAMA_CPP_BASE_URL=http://172.16.107.9:8081
-agent llama "Say hello in one short sentence."
-```
 
 ## Llama.cpp (optional for tests that hit the provider)
 
