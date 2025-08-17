@@ -9,8 +9,10 @@ async def call(args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 
     Supported commands:
 
-    - ``commit`` – create a commit with the provided message using
-      ``git commit -am``.
+    - ``commit`` – create a commit with the provided message. When
+      ``all`` is set, this runs ``git commit -am`` to include tracked
+      changes; otherwise only staged files are committed with
+      ``git commit -m``.
     """
 
     args = args or {}
@@ -18,11 +20,14 @@ async def call(args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 
     if command == "commit":
         message = args.get("message", "")
+        commit_args = ["git", "commit"]
+        if args.get("all"):
+            commit_args.append("-am")
+            commit_args.append(message)
+        else:
+            commit_args.extend(["-m", message])
         proc = await asyncio.create_subprocess_exec(
-            "git",
-            "commit",
-            "-am",
-            message,
+            *commit_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
