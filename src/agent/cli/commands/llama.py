@@ -16,4 +16,3 @@ def main(prompt: str, base_url: Optional[str] = typer.Option(None, help="Overrid
         os.environ["LLAMA_CPP_BASE_URL"] = base_url
     out = llama_call(prompt, base_url=base_url)
     typer.echo(out)
-
